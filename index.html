@@ -5,145 +5,213 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sumit Coffee Reactor</title>
 <style>
+/* ===== Body & Theme ===== */
 body {
     margin: 0;
     font-family: monospace;
     background: radial-gradient(circle at center, #111 0%, #000 90%);
     color: #00ffe7;
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
 }
-h1 { margin-top: 30px; font-size: 28px; }
+h1 {
+    margin-top: 20px;
+    font-size: 28px;
+    text-shadow: 0 0 15px #00ffe7;
+}
 #gameContainer {
-    margin: 30px auto;
-    width: 250px;
-    height: 250px;
-    border: 4px solid #00ffe7;
-    border-radius: 50%;
-    position: relative;
+    width: 320px;
+    height: 420px;
+    border: 3px solid #00ffe7;
+    border-radius: 20px;
+    margin-top: 20px;
     overflow: hidden;
-    box-shadow: 0 0 25px #00ffe7;
+    position: relative;
+    background: #111;
+    box-shadow: 0 0 20px #00ffe7;
 }
+/* ===== Stages ===== */
 .stage {
-    display: none;
     position: absolute;
     width: 100%;
     height: 100%;
     top: 0; left: 0;
-    display: flex;
+    display: none;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    color: #00ffe7;
 }
 button {
     padding: 10px 20px;
-    margin-top: 20px;
+    margin-top: 15px;
     font-size: 16px;
     border: none;
     border-radius: 20px;
     background: #00ffe7;
     color: black;
     cursor: pointer;
+    box-shadow: 0 0 10px #00ffe7;
 }
 .progressBar {
-    width: 70%;
-    height: 15px;
+    width: 80%;
+    height: 20px;
     background: #222;
-    margin-top: 15px;
     border-radius: 10px;
     overflow: hidden;
+    margin-top: 15px;
 }
 .progressFill {
     height: 100%;
     width: 0%;
     background: linear-gradient(to right, #ff4d6d, #ff8fa3);
     border-radius: 10px;
+    transition: width 0.1s linear;
 }
 .message {
-    margin-top: 15px;
+    margin-top: 10px;
     font-size: 14px;
     min-height: 20px;
+    text-align: center;
 }
-.heart { font-size: 50px; display: none; margin-top: 15px; }
+#coffeeCup {
+    width: 120px;
+    height: 160px;
+    background: #552200;
+    border-radius: 60px 60px 10px 10px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 15px;
+    box-shadow: 0 0 15px #ff8fa3 inset;
+}
+#milkFoam {
+    width: 100%;
+    height: 0%;
+    background: #fff;
+    position: absolute;
+    bottom: 0;
+    border-radius: 60px 60px 0 0;
+    transition: height 0.2s;
+}
+.heart {
+    font-size: 50px;
+    display: none;
+    margin-top: 15px;
+    animation: beat 1s infinite;
+}
+@keyframes beat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
 </style>
 </head>
 <body>
 
 <h1>☕ Sumit Coffee Reactor</h1>
-<p>Initialize Barista AI System...</p>
-
 <div id="gameContainer">
-    <!-- Stage 1: Extraction -->
+
+    <!-- Stage 1: Espresso Extraction -->
     <div class="stage" id="stage1">
-        <p>Step 1: Extract Espresso</p>
+        <p>Step 1: Brew Espresso</p>
         <div class="progressBar">
             <div class="progressFill" id="extractProgress"></div>
         </div>
-        <button onclick="startExtraction()">Start Extraction</button>
+        <button id="brewBtn">Tap & Hold to Brew</button>
         <div class="message" id="msg1"></div>
     </div>
 
-    <!-- Stage 2: Steam Milk -->
+    <!-- Stage 2: Milk Frothing -->
     <div class="stage" id="stage2">
-        <p>Step 2: Steam the Milk</p>
-        <button onclick="steamMilk()">Froth Milk</button>
+        <p>Step 2: Froth Milk</p>
+        <div id="coffeeCup">
+            <div id="milkFoam"></div>
+        </div>
+        <button onclick="startFroth()">Froth Milk</button>
         <div class="message" id="msg2"></div>
     </div>
 
     <!-- Stage 3: Latte Art -->
     <div class="stage" id="stage3">
         <p>Step 3: Latte Art</p>
-        <button onclick="latteArt('❤')">Heart</button>
-        <button onclick="latteArt('☕')">Cup</button>
-        <button onclick="latteArt('★')">Star</button>
+        <button onclick="addArt('❤')">Heart</button>
+        <button onclick="addArt('☕')">Cup</button>
+        <button onclick="addArt('★')">Star</button>
         <div class="message" id="msg3"></div>
         <div class="heart" id="finalHeart">💓</div>
     </div>
+
 </div>
 
 <button id="startGame" onclick="startGame()">Activate Reactor</button>
 
 <script>
 let stage = 0;
+let brewing = false;
+let brewWidth = 0;
 
 function startGame() {
     document.getElementById('startGame').style.display = 'none';
     nextStage();
 }
 
+// ===== Stage Navigation =====
 function nextStage() {
     stage++;
     document.querySelectorAll('.stage').forEach(s => s.style.display = 'none');
     document.getElementById('stage'+stage).style.display = 'flex';
 }
 
-function startExtraction() {
-    let progress = document.getElementById('extractProgress');
-    let width = 0;
-    document.getElementById('msg1').innerText = 'Espresso brewing...';
+// ===== Espresso Brewing =====
+const brewBtn = document.getElementById('brewBtn');
+brewBtn.addEventListener('touchstart', startBrewing);
+brewBtn.addEventListener('mousedown', startBrewing);
+brewBtn.addEventListener('touchend', stopBrewing);
+brewBtn.addEventListener('mouseup', stopBrewing);
+
+function startBrewing() {
+    brewing = true;
+    document.getElementById('msg1').innerText = "Espresso brewing...";
+    brewProgress();
+}
+
+function stopBrewing() {
+    brewing = false;
+}
+
+function brewProgress() {
+    if(brewing && brewWidth < 100) {
+        brewWidth++;
+        document.getElementById('extractProgress').style.width = brewWidth + "%";
+        setTimeout(brewProgress, 30);
+    }
+    if(brewWidth >= 100) {
+        document.getElementById('msg1').innerText = "Espresso Ready! AI: Extraction perfect!";
+        setTimeout(nextStage, 1000);
+    }
+}
+
+// ===== Milk Frothing =====
+function startFroth() {
+    let foam = document.getElementById('milkFoam');
+    let height = 0;
+    document.getElementById('msg2').innerText = "Frothing milk...";
     let interval = setInterval(() => {
-        if(width >= 100) {
+        if(height >= 100) {
             clearInterval(interval);
-            document.getElementById('msg1').innerText = 'Espresso Ready! ☕ AI says: Good extraction!';
+            document.getElementById('msg2').innerText = "Milk Perfect! AI: Froth expert detected!";
             setTimeout(nextStage, 1000);
         } else {
-            width++;
-            progress.style.width = width+'%';
+            height += 5;
+            foam.style.height = height + "%";
         }
-    }, 30);
+    }, 200);
 }
 
-function steamMilk() {
-    let msg = document.getElementById('msg2');
-    msg.innerText = 'Frothing milk...';
-    setTimeout(() => {
-        msg.innerText = 'Milk Perfect! AI says: Froth level expert!';
-        setTimeout(nextStage, 1000);
-    }, 2000);
-}
-
-function latteArt(art) {
-    let msg = document.getElementById('msg3');
-    msg.innerText = `Latte Art: ${art} created! AI: Barista Master Detected!`;
+// ===== Latte Art =====
+function addArt(symbol) {
+    document.getElementById('msg3').innerText = `Latte Art: ${symbol} created! AI: Barista Master Detected!`;
     document.getElementById('finalHeart').style.display = 'block';
 }
 </script>
